@@ -1,0 +1,18 @@
+data:
+  data_dir: ./data/dogbreed
+  num_workers: 4
+  batch_size: 64
+  splits:
+  - 0.8
+  - 0.1
+  - 0.1
+model:
+  _target_: timm.create_model
+  model_name: vitl
+  pretrained: true
+trainer:
+  _target_: train.Trainer
+  accelerator: cpu
+  devices: 1
+  min_epochs: 1
+  max_epochs: 5
