@@ -1,3 +1,0 @@
-[2024-10-04 23:22:55,601][timm.models._builder][INFO] - Loading pretrained weights from Hugging Face hub (timm/vit_large_patch16_384.augreg_in21k_ft_in1k)
-[2024-10-04 23:22:55,997][timm.models._hub][INFO] - [timm/vit_large_patch16_384.augreg_in21k_ft_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
-[2024-10-04 23:22:56,508][timm.models._builder][INFO] - Missing keys (head.weight, head.bias) discovered while loading pretrained weights. This is expected if model is being adapted.
