@@ -1,92 +1,110 @@
-from lightning import Trainer
-from model_builder.food_classifier import FoodClassifier
-from datamodules.food_data_module import FoodDataModule
-from lightning.pytorch.loggers import TensorBoardLogger
-from torchvision.transforms import transforms
-from lightning.pytorch.callbacks import ModelCheckpoint
-from utils.custom_callbacks import PrintCallBack
 import os
-import json
+from typing import List
 
+import hydra
+from omegaconf import DictConfig
+import pytorch_lightning as pl
+import rootutils
+from lightning.pytorch.loggers import Logger
+from src.utils.logging_utils import setup_logger, task_wrapper
+#from src.utils.instantiation_utils import instantiate_callbacks, instantiate_loggers
+import logging
+# Setup project root and Python path
+root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
+log = logging.getLogger(__name__)
 
+def instantiate_callbacks(callback_cfg: DictConfig) -> List[pl.Callback]:
+    callbacks: List[pl.Callback] = []
+    if not callback_cfg:
+        log.warning("No callback configs found! Skipping..")
+        return callbacks
 
-def normalize_transforms():
-    return transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
+    for _, cb_conf in callback_cfg.items():
+        if "_target_" in cb_conf:
+            log.info(f"Instantiating callback <{cb_conf._target_}>")
+            callbacks.append(hydra.utils.instantiate(cb_conf))
+
+    return callbacks
+
+def instantiate_loggers(logger_cfg: DictConfig) -> List[pl.LightningLoggerBase]:
+    loggers: List[pl.LightningLoggerBase] = []
+    if not logger_cfg:
+        log.warning("No logger configs found! Skipping..")
+        return loggers
+
+    for _, lg_conf in logger_cfg.items():
+        if "_target_" in lg_conf:
+            log.info(f"Instantiating logger <{lg_conf._target_}>")
+            loggers.append(hydra.utils.instantiate(lg_conf))
+
+    return loggers
+
+@task_wrapper
+def train(
+    cfg: DictConfig,
+    trainer: pl.Trainer,
+    model: pl.LightningModule,
+    datamodule: pl.LightningDataModule,
+):
+    log.info("Starting training!")
+    trainer.fit(model, datamodule)
+    train_metrics = trainer.callback_metrics
+    log.info(f"Training metrics:\n{train_metrics}")
+
+@task_wrapper
+def test(cfg: DictConfig, trainer: pl.Trainer, model: pl.LightningModule, datamodule: pl.LightningDataModule):
+    log.info("Starting testing!")
+    if trainer.checkpoint_callback.best_model_path:
+        log.info(
+            f"Loading best checkpoint: {trainer.checkpoint_callback.best_model_path}"
         )
+        test_metrics = trainer.test(
+            model, datamodule, ckpt_path=trainer.checkpoint_callback.best_model_path
+        )
+    else:
+        log.warning("No checkpoint found! Using current model weights.")
+        test_metrics = trainer.test(model, datamodule)
+    log.info(f"Test metrics:\n{test_metrics}")  
 
-def train():
-    # 1. train_transform
-    train_transforms = transforms.Compose(
-        [
-            transforms.Resize((IMG_SIZE, IMG_SIZE)),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize_transforms()
-        ]
+@hydra.main(version_base=None, config_path="../configs", config_name="train")
+def main(cfg: DictConfig):
+    # Set up the root directory (if needed)
+    log_dir = os.path.join(cfg.paths.log_dir)
+    # set up logger
+    setup_logger(log_dir/"train.log")
+    #root.set_root_dir()
+
+    # Create data module
+    log.info(f"Instantiating datamodule <{cfg.data._target_}>")
+    datamodule: pl.LightningDataModule = hydra.utils.instantiate(cfg.data)
+
+    # Create model
+    log.info(f"Instantiating model <{cfg.model._target_}>")
+    model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
+
+    callbacks: List[pl.Callback] = instantiate_callbacks(cfg.get("callbacks"))
+    
+    loggers: List[Logger] = instantiate_loggers(cfg.get("logger"))
+    # Create trainer
+    log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
+    trainer: pl.Trainer = hydra.utils.instantiate(
+        cfg.trainer, callbacks=callbacks, logger=loggers
     )
-    
-    # 2. test transform
-    test_transforms = transforms.Compose([
-        transforms.Resize((IMG_SIZE, IMG_SIZE)),
-        transforms.ToTensor(),
-        normalize_transforms()
-    ])
-    # 3. data module
-    food_data_module = FoodDataModule(transforms=train_transforms,
-                                      test_transforms=test_transforms,
-                                      data_dir='./data',
-                                      batch_size=16,
-                                      num_workers=2)
 
-    # 4. model building
-    food_classifier = FoodClassifier(num_classes=NUM_CLASSES,
-                                     lr=1e-3,
-                                    #  model_name='mobilevitv2_100'
-                                    model_name='efficientnet_b3'
-                                       )
-    # 5. callbacks
-    model_checkpoint = ModelCheckpoint(dirpath='./model',
-                                       monitor='val_loss',
-                                       filename='best_model_food_classifier',
-                                       #filename='efficientnet_b0_{epoch}-{val_accuracy:.2f}-{val_loss:.2f}',
-                                       save_top_k=1)
+    # Train the model
+    if cfg.get("train"):
+        train(cfg, trainer, model, datamodule)
 
-    print_callbacks = PrintCallBack()
+    # Test the model
+    if cfg.get("test"):
+        test(cfg, trainer, model, datamodule)
 
-    # train
+    # # Return metric score for hyperparameter optimization
+    # optimized_metric = cfg.get("optimized_metric")
+    # if optimized_metric and optimized_metric in trainer.callback_metrics:
+    #     return trainer.callback_metrics[optimized_metric]
 
-    trainer = Trainer(
-                    # fast_dev_run=True,
-                    #   limit_train_batches=10,
-                    #   limit_val_batches=10,
-                        accelerator='auto',
-                        min_epochs=MIN_EPOCH,
-                        max_epochs=MAX_EPOCH,
-                        enable_progress_bar=True,
-                        callbacks=[
-                            print_callbacks,
-                            model_checkpoint
-                        ]
-                      )
-    
-    trainer.fit(food_classifier, food_data_module)
-    print(f"class_names {food_data_module.class_names}")
-    print(f"print_callbacks {print_callbacks.collections}")
-    # try:
-    #     with open("./model/trainer_loss_acc_results.json",'w') as f:
-    #         json.dump(print_callbacks.collections, f)
-    # except Exception as exp:
-    #     print("Exception while writing json results")
-    #     print(exp)
+if __name__ == "__main__":
+    main()
 
-
-if __name__ =='__main__':
-    IMG_SIZE = 224
-    NUM_CLASSES = 10
-    MIN_EPOCH=1
-    MAX_EPOCH=20
-    train()
-    
