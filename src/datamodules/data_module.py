@@ -46,7 +46,7 @@ class GenericDataModule(L.LightningDataModule):
             # Train and Test folders exist
             train_dataset = datasets.ImageFolder(root=self.data_dir/'train', transform=self.train_transform)
             test_dataset = datasets.ImageFolder(root=self.data_dir/'test', transform=self.test_transform)
-            
+            print(train_dataset.classes)
             if (self.data_dir / 'val').exists():
                 # Validation folder also exists
                 val_dataset = datasets.ImageFolder(root=self.data_dir/'val', transform=self.test_transform)
@@ -58,6 +58,7 @@ class GenericDataModule(L.LightningDataModule):
         else:
             # Create splits from a single directory
             full_dataset = datasets.ImageFolder(root=self.data_dir, transform=self.train_transform)
+            print(full_dataset.classes)
             train_size = int(self.splits[0] * len(full_dataset))
             val_size = int(self.splits[1] * len(full_dataset))
             test_size = len(full_dataset) - train_size - val_size
@@ -70,7 +71,9 @@ class GenericDataModule(L.LightningDataModule):
             self.test_dataset = test_dataset
         
         self.class_names = train_dataset.classes if hasattr(train_dataset, 'classes') else None
-
+        print("+"*50)
+        print(self.class_names)
+        print("+"*50)
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True,
                           num_workers=self.num_workers, pin_memory=self.pin_memory)

@@ -28,9 +28,6 @@ model:
   learning_rate: 1e-4
   num_classes: 10
 
-  
-data:
-  batch_size: 32
 
 # Early stopping configuration
 callbacks:

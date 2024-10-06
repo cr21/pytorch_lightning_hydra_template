@@ -1,17 +1,24 @@
 import os
-from typing import List
+from pathlib import Path
+import sys
 
+import rootutils
+
+# Setup the root directory
+root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+print(f"Project root: {root}")
+
+# Rest of your imports
+from typing import List
 import hydra
 from omegaconf import DictConfig
 import pytorch_lightning as pl
-import rootutils
-from lightning.pytorch.loggers import Logger
-from src.utils.logging_utils import setup_logger, task_wrapper
-#from src.utils.instantiation_utils import instantiate_callbacks, instantiate_loggers
 import logging
-# Setup project root and Python path
-root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
+from src.utils.logging_utils import setup_logger, task_wrapper
+from lightning.pytorch.loggers import Logger
+
+# Set up logging
 log = logging.getLogger(__name__)
 
 def instantiate_callbacks(callback_cfg: DictConfig) -> List[pl.Callback]:
@@ -19,15 +26,18 @@ def instantiate_callbacks(callback_cfg: DictConfig) -> List[pl.Callback]:
     if not callback_cfg:
         log.warning("No callback configs found! Skipping..")
         return callbacks
-
+    i=0
     for _, cb_conf in callback_cfg.items():
+        print(cb_conf)
+        print(i)
+        i+=1
         if "_target_" in cb_conf:
             log.info(f"Instantiating callback <{cb_conf._target_}>")
             callbacks.append(hydra.utils.instantiate(cb_conf))
 
     return callbacks
 
-def instantiate_loggers(logger_cfg: DictConfig) -> List[pl.LightningLoggerBase]:
+def instantiate_loggers(logger_cfg: DictConfig) -> List[Logger]:
     loggers: List[pl.LightningLoggerBase] = []
     if not logger_cfg:
         log.warning("No logger configs found! Skipping..")
@@ -70,7 +80,7 @@ def test(cfg: DictConfig, trainer: pl.Trainer, model: pl.LightningModule, datamo
 @hydra.main(version_base=None, config_path="../configs", config_name="train")
 def main(cfg: DictConfig):
     # Set up the root directory (if needed)
-    log_dir = os.path.join(cfg.paths.log_dir)
+    log_dir = Path(cfg.paths.log_dir)
     # set up logger
     setup_logger(log_dir/"train.log")
     #root.set_root_dir()
