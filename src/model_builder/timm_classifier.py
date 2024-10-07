@@ -56,7 +56,7 @@ class TimmClassifier(pl.LightningModule):
         self.log_dict({
             'train/loss': loss,
             'train/acc': accuracy,
-            'train/f1': f1score
+            'train/f1': f1score,
         }, on_epoch=True, on_step=False, prog_bar=True)
         return loss
 
@@ -67,7 +67,7 @@ class TimmClassifier(pl.LightningModule):
         self.log_dict({
             'val/loss': loss,
             'val/acc': accuracy,
-            'val/f1': f1score
+            'val/f1': f1score,
         }, on_epoch=True, on_step=False, prog_bar=True)
         return loss
 
@@ -78,7 +78,7 @@ class TimmClassifier(pl.LightningModule):
         self.log_dict({
             'test/loss': loss,
             'test/acc': accuracy,
-            'test/f1': f1score
+            'test/f1': f1score,
         }, on_epoch=True, on_step=False, prog_bar=True)
         return loss
 

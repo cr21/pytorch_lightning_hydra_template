@@ -11,7 +11,6 @@ name: ${evaluation.name}
 ckpt_path: ${evaluation.ckpt_path}
 save_dir: ${evaluation.save_dir}
 data_dir: ${evaluation.data_dir}
-task_name: "evaluation"
 
 # Evaluation specific configurations
 batch_size: ${evaluation.batch_size}

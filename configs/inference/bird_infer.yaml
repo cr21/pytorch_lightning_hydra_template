@@ -1,5 +1,5 @@
 name: bird_classification
-ckpt_path: ${oc.env:PROJECT_ROOT}/checkpoints/${name}/best_model.pth.ckpt
+ckpt_path: ${oc.env:PROJECT_ROOT}/checkpoints/${name}/best_model.ckpt
 save_dir: ${oc.env:PROJECT_ROOT}/predictions/${name}/
 data_dir: ${data.data_dir}
 num_samples: 10

@@ -37,7 +37,7 @@ callbacks:
     mode: "max"
   model_checkpoint:
     dirpath: ${oc.env:PROJECT_ROOT}/checkpoints/${name}/
-    filename: "best_model.pth"
+    filename: "best_model"
     monitor: "val/acc"
     mode: "max"
     save_top_k: 1

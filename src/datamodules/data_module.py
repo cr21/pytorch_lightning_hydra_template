@@ -14,9 +14,11 @@ class GenericDataModule(L.LightningDataModule):
         pin_memory: bool = True,
         train_transform: Optional[transforms.Compose] = None,
         test_transform: Optional[transforms.Compose] = None,
-        splits: List[float] = [0.8, 0.1, 0.1]
+        splits: List[float] = [0.8, 0.1, 0.1],
+        name: str = "generic_datamodule"
     ):
         super().__init__()
+        self.name = name
         self.data_dir = Path(data_dir)
         self.num_workers = num_workers
         self.batch_size = batch_size
