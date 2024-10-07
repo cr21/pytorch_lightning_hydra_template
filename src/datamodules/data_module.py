@@ -46,7 +46,7 @@ class GenericDataModule(L.LightningDataModule):
             # Train and Test folders exist
             train_dataset = datasets.ImageFolder(root=self.data_dir/'train', transform=self.train_transform)
             test_dataset = datasets.ImageFolder(root=self.data_dir/'test', transform=self.test_transform)
-            print(train_dataset.classes)
+            self.class_names = train_dataset.classes
             if (self.data_dir / 'val').exists():
                 # Validation folder also exists
                 val_dataset = datasets.ImageFolder(root=self.data_dir/'val', transform=self.test_transform)
@@ -55,7 +55,9 @@ class GenericDataModule(L.LightningDataModule):
                 train_size = int(self.splits[0] * len(train_dataset))
                 val_size = len(train_dataset) - train_size
                 train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
+
         else:
+            #print("ESLSEEE")
             # Create splits from a single directory
             full_dataset = datasets.ImageFolder(root=self.data_dir, transform=self.train_transform)
             print(full_dataset.classes)
@@ -63,14 +65,18 @@ class GenericDataModule(L.LightningDataModule):
             val_size = int(self.splits[1] * len(full_dataset))
             test_size = len(full_dataset) - train_size - val_size
             train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
-        
+            self.class_names = full_dataset.classes
         if stage == "fit" or stage is None:
             self.train_dataset = train_dataset
             self.val_dataset = val_dataset
+            #self.class_names = train_dataset.classes if hasattr(train_dataset, 'classes') else None
+        if stage =="validate" or stage is None:
+            self.val_dataset = val_dataset
         if stage == "test" or stage is None:
             self.test_dataset = test_dataset
+            #self.class_names = test_dataset.classes if hasattr(train_dataset, 'classes') else None
         
-        self.class_names = train_dataset.classes if hasattr(train_dataset, 'classes') else None
+        
         print("+"*50)
         print(self.class_names)
         print("+"*50)

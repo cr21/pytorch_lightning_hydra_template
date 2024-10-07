@@ -81,6 +81,7 @@ def test(cfg: DictConfig, trainer: pl.Trainer, model: pl.LightningModule, datamo
 def main(cfg: DictConfig):
     # Set up the root directory (if needed)
     log_dir = Path(cfg.paths.log_dir)
+    print(log_dir)
     # set up logger
     setup_logger(log_dir/"train.log")
     #root.set_root_dir()

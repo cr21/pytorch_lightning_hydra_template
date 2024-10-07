@@ -1,14 +1,14 @@
 # @package _global_
 
 defaults:
-  - override /data: dogbreed
+  - override /data: birddata
   - override /model: timm_classifier
   - override /callbacks: default
   - override /trainer: cpu
   - override /logger: default
 
 # Experiment name
-name: dogbreed_classification
+name: bird_classification
 
 seed: 42
 
@@ -24,7 +24,7 @@ trainer:
 
 # Adjust learning rate and batch size
 model:
-  base_model: "resnet18"
+  base_model: "vit_tiny_patch16_224"
   learning_rate: 1e-4
   num_classes: 10
 
@@ -44,4 +44,4 @@ callbacks:
     save_last: True
 
 # Tags for experiment tracking
-tags: ["dogbreed", "classification", "resnet18"]
+tags: ["birddata", "classification", "vit_tiny_patch16_224"]

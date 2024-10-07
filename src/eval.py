@@ -1,72 +1,82 @@
 import os
-import argparse
-from model_builder.food_classifier import FoodClassifier
-import torch
-from lightning import Trainer
-from datamodules.food_data_module import FoodDataModule
-from torchvision.transforms import transforms
-from utils.transformations import normalize_transforms
-import json
 from pathlib import Path
+import rootutils
+import json
+from typing import List
 
-def evaluate(ckpt_path:str):
-    """
-    Load Model from checkpoint path and then evaluate
+# Setup the root directory
+root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+print(f"Project root: {root}")
+
+import hydra
+from omegaconf import DictConfig
+import pytorch_lightning as pl
+import torch
+from pytorch_lightning import Trainer
+from lightning.pytorch.loggers import Logger
+import logging
+from src.utils.logging_utils import setup_logger
+
+# Set up logging
+log = logging.getLogger(__name__)
+
+def instantiate_loggers(logger_cfg: DictConfig) -> List[Logger]:
+    loggers: List[Logger] = []
+    if not logger_cfg:
+        log.warning("No logger configs found! Skipping..")
+        return loggers
+
+    for _, lg_conf in logger_cfg.items():
+        if "_target_" in lg_conf:
+            log.info(f"Instantiating logger <{lg_conf._target_}>")
+            loggers.append(hydra.utils.instantiate(lg_conf))
+
+    return loggers
+
+@hydra.main(version_base=None, config_path="../configs", config_name="eval")
+def evaluate(cfg: DictConfig):
+    log_dir = Path(cfg.paths.log_dir)
+    # set up logger
+    setup_logger(log_dir/"evaluation.log")
+
+    # Set up paths
+    ckpt_path = Path(cfg.ckpt_path)
+    save_dir = Path(cfg.save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load model
+    log.info(f"Loading model from {ckpt_path}")
+    model = hydra.utils.instantiate(cfg.model)
+    model = model.__class__.load_from_checkpoint(ckpt_path)
+
+    # Set up data module
+    log.info("Setting up data module")
+    data_module: pl.LightningDataModule = hydra.utils.instantiate(cfg.data)
+    data_module.setup("test")
+
+    # Instantiate loggers
+    loggers: List[Logger] = instantiate_loggers(cfg.get("logger"))
+
+    # Set up trainer
+    log.info("Instantiating Trainer")
+    trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=loggers)
+
+    # Perform evaluation
+    log.info("Starting evaluation")
+    validation_output = trainer.validate(model=model, datamodule=data_module)
     
-    """
+    log.info(f"Validation output: {validation_output}")
+
+    # Save results
+    results_file = save_dir / "eval_results.json"
+    log.info(f"Saving evaluation results to {results_file}")
     try:
-        model  = FoodClassifier.load_from_checkpoint(checkpoint_path=ckpt_path)
+        with results_file.open("w") as f:
+            json.dump(validation_output, f, indent=2)
     except Exception as exp:
-        print(f"Exception while loading model from checkpoint {exp}")
-    model.to("cuda" if torch.cuda.is_available() else "cpu")
-    trainer=Trainer(accelerator='auto',
-                        min_epochs=1,
-                        max_epochs=1,
-                        enable_progress_bar=True)
-    
-    train_transforms = transforms.Compose(
-        [
-            transforms.Resize((IMG_SIZE, IMG_SIZE)),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize_transforms()
-        ]
-    )
-    
-    # 2. test transform
-    test_transforms = transforms.Compose([
-        transforms.Resize((IMG_SIZE, IMG_SIZE)),
-        transforms.ToTensor(),
-        normalize_transforms()
-    ])
+        log.error(f"Exception while writing json results: {exp}")
 
-    food_data_module = FoodDataModule(transforms=train_transforms,
-                                      test_transforms=test_transforms,
-                                      data_dir='./data',
-                                      batch_size=32,
-                                      num_workers=2)
-    
-    validation_output = trainer.validate(model=model,ckpt_path=ckpt_path,
-                     datamodule=food_data_module)
-    
-    print(f"validation_output => {validation_output}") 
+    log.info(f"Evaluation complete. Results saved in {results_file}")
 
-    try:
-        with (Path(args.save_dir) / "model" / "eval_results.json").open("w") as f:
-            json.dump(validation_output, f)
-    except Exception as exp:
-        print("Exception while writing json results")
-        print(exp)
-
-if __name__=='__main__':
-    parser = argparse.ArgumentParser(description="Perform inference on images")
-    parser.add_argument(
-        "--ckpt_path", type=str, default='./model/best_model_food_classifier.ckpt', required=False, help="Path to the model checkpoint"
-    )
-    parser.add_argument(
-        "--save-dir", default="./", help="checkpoint will be saved in this directory"
-    )
-    IMG_SIZE=224
-    args = parser.parse_args()
-    print(args)
-    evaluate(args.ckpt_path)
+if __name__ == '__main__':
+    evaluate()
