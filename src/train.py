@@ -9,7 +9,7 @@ root = rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True
 print(f"Project root: {root}")
 
 # Rest of your imports
-from typing import List
+from typing import List, Optional
 import hydra
 from omegaconf import DictConfig
 import pytorch_lightning as pl
@@ -61,21 +61,24 @@ def train(
     trainer.fit(model, datamodule)
     train_metrics = trainer.callback_metrics
     log.info(f"Training metrics:\n{train_metrics}")
+    return train_metrics
 
 @task_wrapper
-def test(cfg: DictConfig, trainer: pl.Trainer, model: pl.LightningModule, datamodule: pl.LightningDataModule):
+def test(cfg: Optional[DictConfig] = None, trainer: Optional[pl.Trainer] = None, model: Optional[pl.LightningModule] = None, datamodule: Optional[pl.LightningDataModule] = None):
     log.info("Starting testing!")
-    if trainer.checkpoint_callback.best_model_path:
+    if trainer.checkpoint_callback and trainer.checkpoint_callback.best_model_path:
         log.info(
             f"Loading best checkpoint: {trainer.checkpoint_callback.best_model_path}"
         )
         test_metrics = trainer.test(
             model, datamodule, ckpt_path=trainer.checkpoint_callback.best_model_path
         )
+
     else:
         log.warning("No checkpoint found! Using current model weights.")
         test_metrics = trainer.test(model, datamodule)
-    log.info(f"Test metrics:\n{test_metrics}")  
+        log.info(f"Test metrics:\n{test_metrics}")  
+    return test_metrics
 
 @hydra.main(version_base=None, config_path="../configs", config_name="train")
 def main(cfg: DictConfig):
