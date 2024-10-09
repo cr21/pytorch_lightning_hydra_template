@@ -67,13 +67,8 @@ def train(
 def test(cfg: Optional[DictConfig] = None, trainer: Optional[pl.Trainer] = None, model: Optional[pl.LightningModule] = None, datamodule: Optional[pl.LightningDataModule] = None):
     log.info("Starting testing!")
     if trainer.checkpoint_callback and trainer.checkpoint_callback.best_model_path:
-        log.info(
-            f"Loading best checkpoint: {trainer.checkpoint_callback.best_model_path}"
-        )
-        test_metrics = trainer.test(
-            model, datamodule, ckpt_path=trainer.checkpoint_callback.best_model_path
-        )
-
+        log.info(f"Loading best checkpoint: {trainer.checkpoint_callback.best_model_path}")
+        test_metrics = trainer.test(model, datamodule, ckpt_path=trainer.checkpoint_callback.best_model_path)
     else:
         log.warning("No checkpoint found! Using current model weights.")
         test_metrics = trainer.test(model, datamodule)
@@ -102,9 +97,7 @@ def main(cfg: DictConfig):
     loggers: List[Logger] = instantiate_loggers(cfg.get("logger"))
     # Create trainer
     log.info(f"Instantiating trainer <{cfg.trainer._target_}>")
-    trainer: pl.Trainer = hydra.utils.instantiate(
-        cfg.trainer, callbacks=callbacks, logger=loggers
-    )
+    trainer: pl.Trainer = hydra.utils.instantiate(cfg.trainer, callbacks=callbacks, logger=loggers)
 
     # Train the model
     if cfg.get("train"):
