@@ -8,3 +8,6 @@ wheels/
 outputs/
 # Virtual environments
 .venv
+pl_venv/*
+.python-version
+data/
