@@ -58,8 +58,8 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build . -t ghcr.io/${{ github.repository }}/my-image:latest  # Adjust image name as needed
+          docker build . -t ghcr.io/${{ github.repository }}/hydra-ptl:latest  # Adjust image name as needed
 
       - name: Push Docker image to GHCR
         run: |
-          docker push ghcr.io/${{ github.repository }}/my-image:latest  # Push the image to GHCR
+          docker push ghcr.io/${{ github.repository }}/hydra-ptl:latest  # Push the image to GHCR
